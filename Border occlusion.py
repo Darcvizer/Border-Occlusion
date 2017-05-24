@@ -1,144 +1,101 @@
 import bpy
-import bgl
-from mathutils import Vector
-from bpy.props import IntProperty, BoolProperty
-
-
-################################################
-#This script Chebhou, I only made small changes#
-################################################
-
+from bpy.types import Operator, Macro
 
 bl_info = {
-"name": "Border back face",
-"location": "View3D > Add > Mesh > Destructive Extrude,",
+"name": "Border Occlusion",
+"location": "View3D > Add > Mesh > Border Occlusion",
 "description": "Drag mause for seletion back and front faces by dorder",
-"author": "Chebhou, Vladislav Kindushov",
-"version": (0,1),
+"author": "Vladislav Kindushov",
+"version": (0,2),
 "blender": (2, 7, 8),
 "category": "Mesh",
 }
 
 
-def draw_callback_px(self, context):
+class BorderOcclusion(bpy.types.Operator):
+	"""Border Occlusion selection """
+	bl_idname = "view3d.border_occlusion"
+	bl_label = "Border Occlusion"
+	bl_options = {'REGISTER', 'UNDO'}
 
-    bgl.glEnable(bgl.GL_BLEND)
-    bgl.glColor4f(1.0, 1.0, 1.0, 0.5)
-    bgl.glLineWidth(2)
+	def execute(self, context):
+		#context.space_data.use_occlude_geometry = False
+		#bpy.ops.view3d.select_lasso('INVOKE_DEFAULT')
+		#context.space_data.use_occlude_geometry = True
+		return {'FINISHED'}
 
-    if self.selecting :
-        # when selecting draw dashed line box
-        bgl.glEnable(bgl.GL_LINE_STIPPLE)
-        bgl.glLineStipple(2, 0x3333)
-        bgl.glBegin(bgl.GL_LINE_LOOP)
+class a(bpy.types.Operator):
+	"""Border Occlusion selection """
+	bl_idname = "view3d.a"
+	bl_label = "a"
 
-        bgl.glVertex2i(self.min_x, self.min_y)
-        bgl.glVertex2i(self.min_x, self.max_y)
-        bgl.glVertex2i(self.max_x, self.max_y)
-        bgl.glVertex2i(self.max_x, self.min_y)
+	# bl_options = {'REGISTER', 'UNDO'}
 
-        bgl.glEnd()
+	def execute(self, context):
+		context.space_data.use_occlude_geometry = False
+		#bpy.ops.view3d.select_lasso('INVOKE_DEFAULT')
+		# context.space_data.use_occlude_geometry = True
+		return {'FINISHED'}
 
-        bgl.glDisable(bgl.GL_LINE_STIPPLE)
-    '''else :
-        # before selection starts draw infinite cross
-        bgl.glBegin(bgl.GL_LINES)
+class b(bpy.types.Operator):
+	"""Border Occlusion selection """
+	bl_idname = "view3d.b"
+	bl_label = "b"
+	#bl_options = {'REGISTER', 'UNDO'}
 
-        bgl.glVertex2i(0, self.max_y)
-        bgl.glVertex2i(context.area.width, self.max_y)        
+	def execute(self, context):
+		#context.space_data.use_occlude_geometry = False
+		#bpy.ops.view3d.select_lasso('INVOKE_DEFAULT')
+		context.space_data.use_occlude_geometry = True
+		return {'FINISHED'}
 
-        bgl.glVertex2i(self.max_x, 0)
-        bgl.glVertex2i(self.max_x, context.area.height)
-
-        bgl.glEnd()'''
-
-    # restore opengl defaults
-    bgl.glLineWidth(1)
-    bgl.glDisable(bgl.GL_BLEND)
-    bgl.glColor4f(0.0, 0.0, 0.0, 1.0)
+class OcclusionMacro(Macro):
+	bl_idname = 'view3d.occlusion_macro'
+	bl_label = 'Occlusion Macro'
+	bl_options = {'REGISTER', 'UNDO'}
 
 
-class SelectOperator(bpy.types.Operator):
-    """simple box selection """
-    bl_idname = "view3d.box_select"
-    bl_label = "Simple Box Select Operator"
-    bl_options = {'REGISTER', 'UNDO'}
-
-    min_x = IntProperty(default = 0)
-    min_y = IntProperty(default = 0)
-    max_x = IntProperty()
-    max_y = IntProperty()
-
-    selecting = BoolProperty(default = False) # just for drawing in bgl
-
-    def modal(self, context, event):
-        context.area.tag_redraw()
-        context.space_data.use_occlude_geometry = False
-        if event.type == 'MOUSEMOVE': # just for drawing the box
-            self.selecting = True
-            self.max_x = event.mouse_region_x
-            self.max_y = event.mouse_region_y
-
-        if event.type == 'RIGHTMOUSE':
-            if event.value == 'PRESS': # start selection
-                self.selecting = True
-                self.min_x = event.mouse_region_x
-                self.min_y = event.mouse_region_y
-                
-            if event.value == 'RELEASE': # end of selection
-                #we have to sort the coordinates before passing them to select_border()
-                self.max_x = max(event.mouse_region_x, self.min_x)
-                self.max_y = max(event.mouse_region_y, self.min_y)
-                self.min_x = min(event.mouse_region_x, self.min_x)
-                self.min_y = min(event.mouse_region_y, self.min_y)
-                if event.shift:
-                    bpy.ops.view3d.select_border(gesture_mode=3, xmin=self.min_x, xmax=self.max_x, ymin=self.min_y, ymax=self.max_y, extend=True)
-                    bpy.types.SpaceView3D.draw_handler_remove(self._handle, 'WINDOW')
-                    context.space_data.use_occlude_geometry = True
-                    return {'FINISHED'}
-                else:
-                    bpy.ops.view3d.select_border(gesture_mode=3, xmin=self.min_x, xmax=self.max_x, ymin=self.min_y, ymax=self.max_y, extend=False)
-                    bpy.types.SpaceView3D.draw_handler_remove(self._handle, 'WINDOW')
-                    context.space_data.use_occlude_geometry = True
-                    return {'FINISHED'}
-        elif event.type in {'ESC'}:
-            bpy.types.SpaceView3D.draw_handler_remove(self._handle, 'WINDOW')
-            return {'CANCELLED'}
-
-        return {'RUNNING_MODAL'}
-
-    def invoke(self, context, event):
-
-        if context.space_data.type == 'VIEW_3D':
-            args = (self, context)
-            self._handle = bpy.types.SpaceView3D.draw_handler_add(draw_callback_px, args, 'WINDOW', 'POST_PIXEL')
-            context.window_manager.modal_handler_add(self)
-            self.min_x = event.mouse_region_x
-            self.min_y = event.mouse_region_y
-            
-            return {'RUNNING_MODAL'}
-        else:
-            self.report({'WARNING'}, "Active space must be a View3d")
-            return {'CANCELLED'}
-
+	def execute(self, context):
+		OcclusionMacro.define('view3d.a')
+		OcclusionMacro.define('VIEW3D_OT_select_lasso')
+		OcclusionMacro.define('view3d.b')
+		return {'FINISHED'}
+#
+# class c(bpy.types.Operator):
+# 	"""Border Occlusion selection """
+# 	bl_idname = "view3d.c"
+# 	bl_label = "c"
+# 	#bl_options = {'REGISTER', 'UNDO'}
+#
+# 	def execute(self, context):
+# 		OcclusionMacro.define('view3d.a')
+# 		OcclusionMacro.define('VIEW3D_OT_select_lasso')
+# 		OcclusionMacro.define('view3d.b')
+# 		return {'FINISHED'}
 
 def register():
-    bpy.utils.register_class(SelectOperator)
-    kc = bpy.context.window_manager.keyconfigs.addon
-    if kc:
-        km = kc.keymaps.new(name="3D View", space_type="VIEW_3D")
-        kmi = km.keymap_items.new('view3d.box_select', 'RIGHTMOUSE', 'PRESS',)
-        kmi.active = True
+	bpy.utils.register_module(__name__)
+
+
+	OcclusionMacro.define('VIEW3D_OT_a')
+	OcclusionMacro.define('VIEW3D_OT_select_lasso')
+	OcclusionMacro.define('VIEW3D_OT_b')
+	kc = bpy.context.window_manager.keyconfigs.addon
+	if kc:
+		km = kc.keymaps.new(name="3D View", space_type="VIEW_3D")
+		kmi = km.keymap_items.new('view3d.occlusion_macro', 'RIGHTMOUSE', 'PRESS',)
+		kmi = km.keymap_items.new('view3d.occlusion_macro', 'RIGHTMOUSE', 'PRESS', )
+		kmi = km.keymap_items.new('view3d.occlusion_macro', 'RIGHTMOUSE', 'PRESS',)
+		kmi.active = True
 
 def unregister():
-    bpy.utils.unregister_class(SelectOperator)
-    kc = bpy.context.window_manager.keyconfigs.addon
-    if kc:
-        km = kc.keymaps["3D View"]
-        for kmi in km.keymap_items:
-            if kmi.idname == 'view3d.box_select':
-                km.keymap_items.remove(kmi)
-                break
+	bpy.utils.unregister_module(__name__)
+	kc = bpy.context.window_manager.keyconfigs.addon
+	if kc:
+		km = kc.keymaps["3D View"]
+		for kmi in km.keymap_items:
+			if kmi.idname == 'view3d.occlusion_macro':
+				km.keymap_items.remove(kmi)
 
 if __name__ == "__main__":
-    register()
+	register()
