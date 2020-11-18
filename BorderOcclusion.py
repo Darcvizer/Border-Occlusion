@@ -1,17 +1,18 @@
 import bpy
 from bpy.types import Operator, AddonPreferences
-from bpy.props import BoolProperty
+from bpy.props import BoolProperty, EnumProperty
 import rna_keymap_ui
 bl_info = {
 "name": "BorderOcclusion",
 "location": "View3D > Add > Object > Border Occlusion",
 "description": "Drag mause for seletion back and front faces by dorder",
 "author": "Vladislav Kindushov",
-"version": (0,5),
+"version": (0,5,5),
 "blender": (2, 90, 0),
 "category": "Object",
 }
 addon_keymaps = []
+
 
 class OBJECT_OT_BorderOcclusion(Operator):
     """Border Occlusion selection """
@@ -67,16 +68,12 @@ class OBJECT_OT_BorderOcclusion(Operator):
         context.window_manager.modal_handler_add(self)
         return {'RUNNING_MODAL'}
 
+
 def add_hotkey(prop=None, prop_value=None, shift=False, ctrl=False, alt=False):
     wm = bpy.context.window_manager
     kc = wm.keyconfigs.addon
-    # km = kc.keymaps.new(name="3D View Generic", space_type='VIEW_3D', region_type='WINDOW') 
     km = kc.keymaps.new(name='3D View', space_type='VIEW_3D')
-    kmi = km.keymap_items.new('object.border_occlusion', 'RIGHTMOUSE', 'PRESS', shift=shift, ctrl=ctrl, alt=alt, head=True)
-   # kmi.active = True
-    #km.update()
-
-    # print('create')
+    kmi = km.keymap_items.new('object.border_occlusion', 'RIGHTMOUSE', 'CLICK_DRAG', shift=shift, ctrl=ctrl, alt=alt, head=True)
 
     if not prop is None:
         kmi.properties[prop] = prop_value
@@ -90,7 +87,6 @@ def remove_hotkey():
     km = kc.keymaps.get('3D View')
     for i in km.keymap_items:
         if i.name == 'Border Occlusion' or i.name == 'OBJECT_OT_border_occlusion':
-            # print('remove')
             km.keymap_items.remove(i)
 
 
@@ -119,13 +115,34 @@ def GetKMI():
             kmi.append(i)
     return kmi
 
+
+def SwapIcon(self, context):
+    bpy.types.VIEW3D_HT_header.remove(draw)
+    bpy.types.VIEW3D_MT_editor_menus.remove(draw)
+    if bpy.context.preferences.addons[__name__].preferences.IconPosition == "LEFT":
+        bpy.types.VIEW3D_MT_editor_menus.append(draw)
+    elif bpy.context.preferences.addons[__name__].preferences.IconPosition == "RIGHT":
+        bpy.types.VIEW3D_HT_header.append(draw)
+        
+
 class BorderOccludePref(AddonPreferences):
     bl_idname = __name__
+
+    IconPosition: EnumProperty(
+        name = "Icon Position",
+        description = "",
+        items=[ ("LEFT", "Left", ""),
+                ("RIGHT", "Right", "")],
+        update = SwapIcon
+                )
+
     def draw(self, context):
         layout = self.layout
         box = layout.box()
+        box.prop(self, 'IconPosition')
+        box = layout.box()
         CheckConflict(box)
-
+                    
         kc = bpy.context.window_manager.keyconfigs.user
         km = kc.keymaps.get('3D View')
         
@@ -150,6 +167,7 @@ def draw(self, context):
 
 classes = (OBJECT_OT_BorderOcclusion, BorderOccludePref)
 
+
 def register():
     for i in classes:
         bpy.utils.register_class(i)
@@ -159,18 +177,20 @@ def register():
         description="",
         default = False,
     )
-    bpy.types.VIEW3D_HT_header.append(draw)
-
+    
     add_hotkey(prop='Deselect', prop_value=True,shift=False, ctrl=True)
     add_hotkey(prop='Extend', prop_value=True , shift=True, ctrl=False)
     add_hotkey()
 
+    bpy.types.VIEW3D_MT_editor_menus.append(draw)
+
 def unregister():
     remove_hotkey()
+    bpy.types.VIEW3D_HT_header.remove(draw)
+    bpy.types.VIEW3D_MT_editor_menus.remove(draw)
+
     for i in reversed(classes):
         bpy.utils.unregister_class(i)
-
-    bpy.types.VIEW3D_HT_header.remove(draw)
 
     del bpy.types.Scene.border_occlude_mode
 
